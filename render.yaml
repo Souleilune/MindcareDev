@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: my-php-app
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    region: frankfurt
+    envVars:
+      - key: APP_ENV
+        value: production
