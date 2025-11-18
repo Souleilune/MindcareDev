@@ -1,0 +1,288 @@
+/* ================================
+   MindCare – Login Redesign
+   Matches provided mockup
+   ================================ */
+
+/* Optional: Poppins font for a closer match to the mockup */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
+:root{
+  --teal-1: #5ad0be;   /* light teal */
+  --teal-2: #1aa592;   /* mid teal */
+  --teal-3: #0a6a74;   /* deep teal */
+  --line: #e9edf5;     /* center divider */
+  --field-bg: #f6f7fb; /* input background */
+  --field-text: #2b2f38;
+  --muted: #7a828e;
+  --btn-from: #38c7a3;
+  --btn-to: #2fb29c;
+}
+
+body {
+  font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: var(--field-text);
+}
+
+/* Split layout height */
+.login-page {
+  min-height: 100vh;
+  overflow: hidden;
+  background: #fff;
+}
+.login-page .row {
+  min-height: 100vh;
+}
+
+/* -------------------------------
+   Left panel (Logo + Pre-Assessment)
+   ------------------------------- */
+.info-side {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;      /* left-align content */
+  text-align: left;
+  padding: 0 72px;
+  color: #fff;
+  background:
+    radial-gradient(900px 500px at -10% 115%, rgba(255,255,255,.15) 0%, transparent 60%),
+    linear-gradient(135deg, var(--teal-1) 0%, var(--teal-2) 48%, var(--teal-3) 100%);
+  border-right: 1px solid var(--line); /* center divider line */
+  overflow: hidden;
+}
+
+/* Rounded ornament arcs at the bottom-left */
+.info-side::before,
+.info-side::after {
+  content: '';
+  position: absolute;
+  bottom: -180px;
+  left: -180px;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,.25);
+  pointer-events: none;
+}
+.info-side::before {
+  width: 520px; height: 520px;
+}
+.info-side::after {
+  width: 700px; height: 700px;
+  border-color: rgba(255,255,255,.15);
+}
+
+/* Logo and copy */
+.info-side img {
+  height: 140px;
+  width: auto;
+  margin: 0 0 24px 0;
+}
+.info-side h4 {
+  font-size: 40px;
+  line-height: 1.1;
+  font-weight: 700;
+  margin: 8px 0 10px;
+  color: #fff;
+}
+.info-side p {
+  font-size: 16px;
+  color: rgba(255,255,255,.9);
+  margin-bottom: 18px;
+}
+.info-side .text-muted {
+  color: rgba(255,255,255,.85) !important;
+  font-weight: 500;
+}
+
+/* CTA button style (pill) */
+.info-side a.btn-outline-primary {
+  background: rgba(255,255,255,.20);
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 999px;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.25);
+  transition: transform .15s ease, background .2s ease;
+}
+.info-side a.btn-outline-primary:hover {
+  background: rgba(255,255,255,.28);
+  transform: translateY(-1px);
+}
+
+/* -------------------------------
+   Right panel (Login form)
+   ------------------------------- */
+.login-form-side {
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+}
+
+
+
+.login-container {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+  width: 380px;
+  max-width: 90%;
+  padding: 0;
+  text-align: left;
+}
+
+/* Titles */
+.login-container h3 {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--field-text);
+  margin-bottom: 6px;
+}
+.login-container h4 {
+  font-size: 24px;
+  margin: 0;
+}
+.login-container .subtitle,
+.login-container .lead,
+.login-container .small {
+  color: var(--muted);
+}
+
+/* Alerts */
+.login-container .alert {
+  border: none;
+  border-radius: 10px;
+  background: #ffe6e8;
+  color: #9b1c1f;
+}
+
+/* Input fields – rounded with icons */
+.login-container input[type="email"],
+.login-container input[type="password"],
+.login-container input[type="text"] {
+  background-color: var(--field-bg);
+  border: none;
+  height: 52px;
+  border-radius: 999px;
+  padding: 12px 18px;
+  font-size: 15px;
+  color: var(--field-text);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.02), 0 8px 24px rgba(18,38,63,0.03);
+  transition: box-shadow .2s ease, background-color .2s ease;
+}
+
+/* Left padding to make room for icons */
+.login-container input[type="email"] { padding-left: 52px; }
+.password-wrapper input[type="password"],
+.password-wrapper input[type="text"] { 
+  padding-left: 52px; 
+  padding-right: 48px; 
+}
+
+/* Email icon via inline SVG background (no HTML change needed) */
+.login-container input[type="email"]{
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%2399A3AE' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='14' rx='2' ry='2'/%3E%3Cpolyline points='22,7 12,13 2,7'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 18px 50%;
+}
+
+/* Password icon using the wrapper */
+.password-wrapper { position: relative; }
+.password-wrapper::before{
+  content: "\f023"; /* Font Awesome lock */
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-size: 16px;
+  color: #99A3AE;
+  position: absolute;
+  left: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Show/Hide toggle icon */
+.toggle-password {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #99A3AE;
+  cursor: pointer;
+  z-index: 2;
+}
+
+/* Focus states */
+.login-container input:focus {
+  background-color: #fff;
+  box-shadow: 0 0 0 3px rgba(56,199,163,0.18);
+  outline: none;
+}
+
+/* Login button – pill with gradient */
+.login-container button,
+.login-container .btn-primary {
+  background: linear-gradient(135deg, var(--btn-from) 0%, var(--btn-to) 100%);
+  border: none;
+  height: 56px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: .2px;
+  color: #fff;
+  width: 100%;
+  box-shadow: 0 10px 24px rgba(48,170,153,.35);
+  transition: transform .15s ease, box-shadow .2s ease, opacity .2s ease;
+}
+.login-container button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(48,170,153,.42);
+}
+
+/* Link styles (Forgot password, register) */
+.login-container a {
+  color: #7c8a99;
+  text-decoration: none;
+  font-weight: 500;
+}
+.login-container a:hover { color: #5d6a78; text-decoration: underline; }
+
+/* Make the little tagline italic muted on left panel */
+.info-side .fst-italic { opacity: .95; }
+
+/* Subtle fade for container on load */
+.fade-in {
+  animation: fadeInUp .9s ease both;
+}
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Responsive tweaks */
+@media (max-width: 992px) {
+  .info-side { padding: 48px 40px; }
+  .info-side img { height: 110px; }
+}
+@media (max-width: 768px) {
+  .info-side {
+    min-height: 44vh;
+    border-right: none;
+    padding: 40px 24px;
+  }
+  .login-form-side {
+    min-height: 56vh;
+    padding: 24px;
+  }
+  .login-container { width: 100%; max-width: 440px; }
+}
+
+/* Dark mode (optional – subtle) */
+body.dark-mode.login-page { background: #1f2328; }
+body.dark-mode .login-form-side { background: #1f2328; }
+body.dark-mode .login-container h3 { color: #e6edf3; }
+body.dark-mode .login-container input { background: #242b33; color: #e6edf3; }
+body.dark-mode .info-side { border-right-color: rgba(255,255,255,.08); }
