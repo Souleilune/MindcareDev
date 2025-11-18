@@ -678,8 +678,8 @@ $recommendations = [
                 </div>
               </div>
               <div class="appointment-actions">
-                <button class="btn btn-sm btn-outline-secondary">Reschedule</button>
-                <button class="btn btn-sm btn-outline-primary">View Details</button>
+                <button class="btn btn-sm btn-outline-secondary" onclick="rescheduleAppointment(<?= $apt['id'] ?>)">Reschedule</button>
+                <button class="btn btn-sm btn-outline-primary" onclick="viewAppointmentDetails(<?= $apt['id'] ?>)">View Details</button>
                 <span class="status-badge status-<?= strtolower($apt['status']) ?>"><?= $apt['status'] ?></span>
               </div>
             </div>
@@ -744,8 +744,336 @@ $recommendations = [
 
     // Smooth transition for icon
     icon.style.transition = 'transform 0.5s ease';
+
+    function rescheduleAppointment(appointmentId) {
+    window.location.href = `reschedule_appointment.php?appointment_id=${appointmentId}`;
+  }
+
+  function viewAppointmentDetails(appointmentId) {
+    fetch(`get_appointment_details.php?id=${appointmentId}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          // Populate modal fields
+          document.getElementById('modalAppointmentId').textContent = data.appointment.id;
+          document.getElementById('modalSpecialistName').textContent = data.appointment.specialist_name;
+          document.getElementById('modalSpecialistRole').textContent = data.appointment.specialist_role;
+          document.getElementById('modalAppointmentDate').textContent = data.appointment.date;
+          document.getElementById('modalAppointmentTime').textContent = data.appointment.time;
+          document.getElementById('modalAppointmentStatus').textContent = data.appointment.status;
+          document.getElementById('modalAppointmentStatus').className = `status-badge status-${data.appointment.status.toLowerCase()}`;
+          document.getElementById('modalCreatedAt').textContent = data.appointment.created_at;
+          
+          // Handle specialist email
+          if (data.appointment.specialist_email) {
+            document.getElementById('modalSpecialistEmail').textContent = data.appointment.specialist_email;
+            document.getElementById('modalSpecialistEmailRow').style.display = 'flex';
+          } else {
+            document.getElementById('modalSpecialistEmailRow').style.display = 'none';
+          }
+          
+          // Show modal
+          const modal = new bootstrap.Modal(document.getElementById('appointmentDetailsModal'));
+          modal.show();
+        } else {
+          alert('Error loading appointment details: ' + data.message);
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to load appointment details. Please try again.');
+      });
+  }
+
+  function rescheduleFromModal() {
+    const appointmentId = document.getElementById('modalAppointmentId').textContent;
+    const modal = bootstrap.Modal.getInstance(document.getElementById('appointmentDetailsModal'));
+    modal.hide();
+    rescheduleAppointment(appointmentId);
+  }
   </script>
      <?php include 'beyond_widget.php'; ?>
+
+     <!-- Appointment Details Modal -->
+<div class="modal fade" id="appointmentDetailsModal" tabindex="-1" aria-labelledby="appointmentDetailsModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="appointmentDetailsModalLabel">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+          </svg>
+          Appointment Details
+        </h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <!-- Appointment ID -->
+        <div class="detail-row">
+          <div class="detail-label">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="16" x2="12" y2="12"></line>
+              <line x1="12" y1="8" x2="12.01" y2="8"></line>
+            </svg>
+            Appointment ID
+          </div>
+          <div class="detail-value" id="modalAppointmentId">-</div>
+        </div>
+
+        <!-- Specialist Information -->
+        <div class="detail-section">
+          <h6 class="detail-section-title">Specialist Information</h6>
+          
+          <div class="detail-row">
+            <div class="detail-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              Name
+            </div>
+            <div class="detail-value" id="modalSpecialistName">-</div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                <circle cx="8.5" cy="7" r="4"></circle>
+                <polyline points="17 11 19 13 23 9"></polyline>
+              </svg>
+              Role
+            </div>
+            <div class="detail-value" id="modalSpecialistRole">-</div>
+          </div>
+
+          <div class="detail-row" id="modalSpecialistEmailRow" style="display: none;">
+            <div class="detail-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
+              Email
+            </div>
+            <div class="detail-value" id="modalSpecialistEmail">-</div>
+          </div>
+        </div>
+
+        <!-- Appointment Information -->
+        <div class="detail-section">
+          <h6 class="detail-section-title">Appointment Information</h6>
+          
+          <div class="detail-row">
+            <div class="detail-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="16" y1="2" x2="16" y2="6"></line>
+                <line x1="8" y1="2" x2="8" y2="6"></line>
+                <line x1="3" y1="10" x2="21" y2="10"></line>
+              </svg>
+              Date
+            </div>
+            <div class="detail-value" id="modalAppointmentDate">-</div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              Time
+            </div>
+            <div class="detail-value" id="modalAppointmentTime">-</div>
+          </div>
+
+          <div class="detail-row">
+            <div class="detail-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+              </svg>
+              Status
+            </div>
+            <span class="status-badge" id="modalAppointmentStatus">-</span>
+          </div>
+
+          
+
+          <div class="detail-row">
+            <div class="detail-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <polyline points="12 6 12 12 16 14"></polyline>
+              </svg>
+              Booked At
+            </div>
+            <div class="detail-value" id="modalCreatedAt">-</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        <button type="button" class="btn btn-primary" onclick="rescheduleFromModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <polyline points="1 20 1 14 7 14"></polyline>
+            <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+          </svg>
+          Reschedule
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* Modal Styling */
+.modal-content {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.modal-header {
+  background-color: var(--primary-teal);
+  color: white;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  padding: 1.25rem 1.5rem;
+}
+
+.modal-header .btn-close {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+.modal-header .btn-close:hover {
+  opacity: 1;
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.modal-body {
+  padding: 1.5rem;
+}
+
+.detail-section {
+  margin-bottom: 1.5rem;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-teal);
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 0 0 40%;
+}
+
+.detail-label svg {
+  color: var(--primary-teal);
+  flex-shrink: 0;
+}
+
+.detail-value {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--text-dark);
+  text-align: right;
+  flex: 1;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+/* Dark Mode Support */
+body.dark-mode .modal-content {
+  background-color: var(--card-bg);
+  color: var(--text-dark);
+}
+
+body.dark-mode .modal-header {
+  background-color: var(--primary-teal);
+}
+
+body.dark-mode .detail-section-title {
+  color: var(--primary-teal);
+  border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .detail-row {
+  border-bottom-color: var(--border-color);
+}
+
+body.dark-mode .modal-footer {
+  border-top-color: var(--border-color);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .detail-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .detail-label {
+    flex: 1;
+  }
+
+  .detail-value {
+    text-align: left;
+  }
+}
+</style>
+
+<script>
+// Function to reschedule from modal
+function rescheduleFromModal() {
+  const appointmentId = document.getElementById('modalAppointmentId').textContent;
+  // Close modal
+  const modal = bootstrap.Modal.getInstance(document.getElementById('appointmentDetailsModal'));
+  modal.hide();
+  // Redirect to reschedule page
+  rescheduleAppointment(appointmentId);
+}
+</script>
 
 </body>
 </html>
