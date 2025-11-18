@@ -11,7 +11,8 @@ if (!isset($_SESSION['user']) || !in_array($_SESSION['user']['role'], ['Admin', 
 $appointment_id = $_POST['appointment_id'];
 $status = $_POST['status'];
 
-$valid_statuses = ['Confirmed', 'Completed', 'Cancelled'];
+// FIX: Added 'Pending' to valid statuses
+$valid_statuses = ['Pending', 'Confirmed', 'Completed', 'Cancelled'];
 if (!in_array($status, $valid_statuses)) {
   echo "<script>alert('Invalid status.'); window.history.back();</script>";
   exit;
@@ -23,7 +24,14 @@ $result = supabaseUpdate('appointments', ['id' => $appointment_id], [
 
 if (isset($result['error'])) {
   echo "<script>alert('Failed to update status.'); window.history.back();</script>";
-} else {
-  echo "<script>alert('Status updated successfully.'); window.location.href='admin_appointments.php';</script>";
+  exit;
 }
+
+// Determine redirect based on user role
+$redirect_url = 'admin_appointments.php';
+if ($_SESSION['user']['role'] === 'Specialist') {
+  $redirect_url = 'specialist_dashboard.php';
+}
+
+echo "<script>alert('Status updated successfully.'); window.location.href='$redirect_url';</script>";
 exit;

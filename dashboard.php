@@ -36,16 +36,64 @@ $assessments = supabaseSelect(
 $assessment = !empty($assessments) ? $assessments[0] : null;
 
 // Get upcoming appointments (Confirmed or Pending, future dates only)
+// FIX: Get upcoming appointments with fallback method
+// Method 1: Try with foreign key
 $appointments = supabaseSelect(
   'appointments',
   [
     'user_id' => $user_id,
     'appointment_date' => ['operator' => 'gte', 'value' => date('Y-m-d')]
   ],
-  'id,appointment_date,appointment_time,status,users:specialist_id(fullname)',
-  'appointment_date.asc,appointment_time.asc'
+  'id,specialist_id,appointment_date,appointment_time,status,created_at,users!appointments_specialist_id_fkey(fullname,email)',
+  'appointment_date.asc,appointment_time.asc',
+  null,
+  true  // Use SERVICE_KEY to bypass RLS
 );
 
+// Method 2: Fallback if foreign key fails
+if (empty($appointments) || !isset($appointments[0]['users'])) {
+  // Get appointments without foreign key
+  $appointments = supabaseSelect(
+    'appointments',
+    [
+      'user_id' => $user_id,
+      'appointment_date' => ['operator' => 'gte', 'value' => date('Y-m-d')]
+    ],
+    'id,specialist_id,appointment_date,appointment_time,status,created_at',
+    'appointment_date.asc,appointment_time.asc',
+    null,
+    true
+  );
+  
+  // Fetch specialists if we have appointments
+  if (!empty($appointments)) {
+    $specialistIds = array_unique(array_column($appointments, 'specialist_id'));
+    $specialists = [];
+    
+    if (!empty($specialistIds)) {
+      $allSpecialists = supabaseSelect(
+        'users',
+        ['id' => ['operator' => 'in', 'value' => '(' . implode(',', $specialistIds) . ')']],
+        'id,fullname,email',
+        null,
+        null,
+        true
+      );
+      
+      foreach ($allSpecialists as $spec) {
+        $specialists[$spec['id']] = $spec;
+      }
+      
+      foreach ($appointments as &$apt) {
+        $apt['users'] = $specialists[$apt['specialist_id']] ?? [
+          'fullname' => 'Unknown Specialist',
+          'email' => 'N/A'
+        ];
+      }
+      unset($apt);
+    }
+  }
+}
 // Filter appointments by status
 $upcomingAppointments = array_filter($appointments, function($apt) {
   return in_array($apt['status'], ['Confirmed', 'Pending']);

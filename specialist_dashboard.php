@@ -11,28 +11,116 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'Specialist') {
 $specialist_id = $_SESSION['user']['id'];
 $specialist_name = $_SESSION['user']['fullname'];
 
-// Fetch recent bookings (last 7 days) using Supabase
+// FIX: Try multiple methods to fetch appointments with patient info
 $sevenDaysAgo = date('Y-m-d', strtotime('-7 days'));
+
+// Method 1: Try with PostgREST foreign key syntax (using constraint name)
 $recentAppointments = supabaseSelect(
   'appointments',
   [
     'specialist_id' => $specialist_id,
     'created_at' => ['operator' => 'gte', 'value' => $sevenDaysAgo]
   ],
-  'id,user_id,appointment_date,appointment_time,status,created_at,users:user_id(fullname)',
-  'created_at.desc'
+  'id,user_id,appointment_date,appointment_time,status,created_at,users!appointments_user_id_fkey(fullname)',
+  'created_at.desc',
+  null,
+  true  // Use SERVICE_KEY to bypass RLS
 );
+
+// Method 2: Fallback - If foreign key doesn't work, fetch appointments and users separately
+if (empty($recentAppointments) || !isset($recentAppointments[0]['users'])) {
+  // Fetch appointments without foreign key
+  $recentAppointments = supabaseSelect(
+    'appointments',
+    [
+      'specialist_id' => $specialist_id,
+      'created_at' => ['operator' => 'gte', 'value' => $sevenDaysAgo]
+    ],
+    'id,user_id,appointment_date,appointment_time,status,created_at',
+    'created_at.desc',
+    null,
+    true
+  );
+  
+  // Fetch all users in one query for efficiency
+  $userIds = array_unique(array_column($recentAppointments, 'user_id'));
+  $users = [];
+  
+  if (!empty($userIds)) {
+    $allUsers = supabaseSelect(
+      'users',
+      ['id' => ['operator' => 'in', 'value' => '(' . implode(',', $userIds) . ')']],
+      'id,fullname,email,gender',
+      null,
+      null,
+      true
+    );
+    
+    // Index users by ID for quick lookup
+    foreach ($allUsers as $user) {
+      $users[$user['id']] = $user;
+    }
+    
+    // Attach user info to appointments
+    foreach ($recentAppointments as &$apt) {
+      $apt['users'] = $users[$apt['user_id']] ?? ['fullname' => 'Unknown User'];
+    }
+    unset($apt);
+  }
+}
 
 // Limit to 10 results
 $recent_bookings = array_slice($recentAppointments, 0, 10);
 
-// Fetch all appointments for booking management
+// Fetch all appointments for booking management using the same fallback method
 $allAppointments = supabaseSelect(
   'appointments',
   ['specialist_id' => $specialist_id],
-  'id,user_id,appointment_date,appointment_time,status,notes,created_at,users:user_id(fullname,email,gender)',
-  'appointment_date.desc,appointment_time.desc'
+  'id,user_id,appointment_date,appointment_time,status,notes,created_at,users!appointments_user_id_fkey(fullname,email,gender)',
+  'appointment_date.desc,appointment_time.desc',
+  null,
+  true
 );
+
+// Fallback for all appointments if foreign key fails
+if (empty($allAppointments) || !isset($allAppointments[0]['users'])) {
+  $allAppointments = supabaseSelect(
+    'appointments',
+    ['specialist_id' => $specialist_id],
+    'id,user_id,appointment_date,appointment_time,status,notes,created_at',
+    'appointment_date.desc,appointment_time.desc',
+    null,
+    true
+  );
+  
+  // Fetch users
+  $userIds = array_unique(array_column($allAppointments, 'user_id'));
+  $users = [];
+  
+  if (!empty($userIds)) {
+    $allUsers = supabaseSelect(
+      'users',
+      ['id' => ['operator' => 'in', 'value' => '(' . implode(',', $userIds) . ')']],
+      'id,fullname,email,gender',
+      null,
+      null,
+      true
+    );
+    
+    foreach ($allUsers as $user) {
+      $users[$user['id']] = $user;
+    }
+    
+    foreach ($allAppointments as &$apt) {
+      $apt['users'] = $users[$apt['user_id']] ?? [
+        'fullname' => 'Unknown User',
+        'email' => 'N/A',
+        'gender' => 'N/A'
+      ];
+    }
+    unset($apt);
+  }
+}
 
 // Get statistics
 $total_appointments = count($allAppointments);
@@ -212,178 +300,235 @@ $stats = [
       transition: color 0.3s ease;
     }
 
+    .header-section {
+      margin-bottom: 2rem;
+    }
+
+    .header-section h1 {
+      font-size: 1.75rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 0.5rem;
+    }
+
+    .date-time {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .specialist-name {
+      color: var(--primary-teal);
+      font-weight: 600;
+    }
+
     .card {
-      background-color: var(--card-bg);
-      border: 1px solid var(--border-color);
+      background: var(--card-bg);
       border-radius: 12px;
       padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
       margin-bottom: 1.5rem;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-      transition: all 0.3s ease;
-    }
-
-    body.dark-mode .card {
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    }
-
-    .card:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-    }
-
-    body.dark-mode .card:hover {
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
     }
 
     .card-title {
-      font-size: 0.85rem;
+      font-size: 0.875rem;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 0.5rem;
       font-weight: 600;
-      transition: color 0.3s ease;
     }
 
     .card-value {
-      font-size: 1.75rem;
+      font-size: 2rem;
       font-weight: 700;
       color: var(--text-dark);
-      margin-bottom: 0;
-      transition: color 0.3s ease;
     }
 
     .tab-navigation {
-      display: inline-flex;
-      background-color: var(--sidebar-bg);
-      border-radius: 10px;
-      padding: 4px;
-      gap: 0;
-      border: 1px solid var(--border-color);
-      transition: all 0.3s ease;
-      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid var(--border-color);
     }
 
     .tab-btn {
-      padding: 0.5rem 1.5rem;
+      background: none;
       border: none;
-      background-color: transparent;
+      padding: 1rem 1.5rem;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: all 0.3s ease;
+      position: relative;
+      top: 2px;
+    }
+
+    .tab-btn:hover {
       color: var(--primary-teal);
-      font-weight: 500;
+    }
+
+    .tab-btn.active {
+      color: var(--primary-teal);
+      border-bottom-color: var(--primary-teal);
+    }
+
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table thead {
+      background: var(--bg-light);
+    }
+
+    .table th {
+      padding: 1rem;
+      text-align: left;
       font-size: 0.875rem;
-      border-radius: 8px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .table td {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      font-size: 0.9rem;
+    }
+
+    .table tbody tr:hover {
+      background: var(--bg-light);
+    }
+
+    .status-confirmed { background: #28a745; color: white; }
+    .status-pending { background: #ffc107; color: #2b2f38; }
+    .status-completed { background: #17a2b8; color: white; }
+    .status-cancelled { background: #dc3545; color: white; }
+
+    .badge {
+      padding: 0.375rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: inline-block;
+    }
+
+    .btn {
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.875rem;
+      border: none;
       cursor: pointer;
       transition: all 0.3s ease;
     }
 
-    .tab-btn.active {
-      background-color: var(--primary-teal);
-      color: #ffffff;
-      box-shadow: 0 1px 3px rgba(90, 208, 190, 0.3);
-    }
-
-    .tab-btn:hover:not(.active) {
-      color: var(--primary-teal-dark);
-    }
-
-    .table {
-      background-color: var(--card-bg);
-      border-color: var(--border-color);
-      color: var(--text-dark);
-    }
-
-    .table thead {
-      background-color: var(--sidebar-bg);
-      color: var(--text-dark);
-    }
-
-    .table-hover tbody tr:hover {
-      background-color: rgba(90, 208, 190, 0.05);
-    }
-
-    .badge {
-      padding: 0.35rem 0.75rem;
-      font-size: 0.75rem;
-      font-weight: 600;
-      border-radius: 6px;
-    }
-
-    .status-confirmed {
-      background-color: #d4edda;
-      color: #155724;
-    }
-
-    .status-pending {
-      background-color: #fff3cd;
-      color: #856404;
-    }
-
-    .status-completed {
-      background-color: #d1ecf1;
-      color: #0c5460;
-    }
-
-    .status-cancelled {
-      background-color: #f8d7da;
-      color: #721c24;
-    }
-
-    body.dark-mode .status-confirmed {
-      background-color: rgba(34, 139, 34, 0.2);
-      color: #90ee90;
-    }
-
-    body.dark-mode .status-pending {
-      background-color: rgba(255, 215, 0, 0.2);
-      color: #ffd700;
-    }
-
-    body.dark-mode .status-completed {
-      background-color: rgba(23, 162, 184, 0.2);
-      color: #5bc0de;
-    }
-
-    body.dark-mode .status-cancelled {
-      background-color: rgba(220, 53, 69, 0.2);
-      color: #ff6b6b;
-    }
-
     .btn-primary {
-      background-color: var(--primary-teal);
-      border-color: var(--primary-teal);
+      background: var(--primary-teal);
+      color: white;
     }
 
     .btn-primary:hover {
-      background-color: var(--primary-teal-dark);
-      border-color: var(--primary-teal-dark);
+      background: var(--primary-teal-dark);
+    }
+
+    .btn-outline-primary {
+      background: transparent;
+      border: 1px solid var(--primary-teal);
+      color: var(--primary-teal);
+    }
+
+    .btn-outline-primary:hover {
+      background: var(--primary-teal);
+      color: white;
+    }
+
+    .btn-sm {
+      padding: 0.375rem 0.75rem;
+      font-size: 0.8125rem;
+    }
+
+    .btn-success {
+      background: #28a745;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #dc3545;
+      color: white;
+    }
+
+    /* Form Elements */
+    .form-select {
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--card-bg);
+      color: var(--text-dark);
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .form-select:focus {
+      outline: none;
+      border-color: var(--primary-teal);
+      box-shadow: 0 0 0 3px rgba(90, 208, 190, 0.1);
+    }
+
+    .form-select-sm {
+      padding: 0.375rem 0.5rem;
+      font-size: 0.8125rem;
     }
 
     .alert {
-      background-color: transparent;
-      border: none;
-      padding: 1rem 0;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
     }
 
-    h1, h2, h3, h4, h5, h6, p {
-      color: var(--text-dark);
-      transition: color 0.3s ease;
+    .alert-info {
+      background: #e7f3ff;
+      color: #004085;
+      border: 1px solid #b8daff;
     }
 
-    .text-muted {
-      color: var(--text-muted) !important;
+    select.form-select {
+      padding: 0.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 0.875rem;
     }
 
-    @media (max-width: 768px) {
-      .sidebar {
-        transform: translateX(-100%);
-      }
+    .d-flex {
+      display: flex;
+    }
 
-      .sidebar.show {
-        transform: translateX(0);
-      }
+    .justify-content-between {
+      justify-content: space-between;
+    }
 
-      .main-content {
-        margin-left: 0;
-      }
+    .align-items-center {
+      align-items: center;
+    }
+
+    .mb-3 {
+      margin-bottom: 1rem;
+    }
+
+    .me-2 {
+      margin-right: 0.5rem;
+    }
+
+    .table-responsive {
+      overflow-x: auto;
     }
   </style>
 </head>
@@ -415,6 +560,8 @@ $stats = [
 
   <!-- Main Content -->
   <div class="main-content">
+    
+    <!-- Header -->
     <div class="dashboard-header">
       <h1>Welcome, <span class="user-name"><?= htmlspecialchars($specialist_name) ?></span></h1>
       <p class="date-time"><?= date('l, F j, Y') ?></p>
@@ -516,9 +663,8 @@ $stats = [
                   <th>Email</th>
                   <th>Date</th>
                   <th>Time</th>
-                  <th>Status</th>
                   <th>Notes</th>
-                  <th>Actions</th>
+                  <th>Update Status</th>
                 </tr>
               </thead>
               <tbody>
@@ -534,22 +680,17 @@ $stats = [
                     <td><?= htmlspecialchars($row['users']['email'] ?? 'N/A') ?></td>
                     <td><?= date('M d, Y', strtotime($row['appointment_date'])) ?></td>
                     <td><?= date('g:i A', strtotime($row['appointment_time'])) ?></td>
+                    <td><?= htmlspecialchars($row['notes'] ?? '-') ?></td>
                     <td>
-                      <span class="badge status-<?= strtolower($row['status']) ?>">
-                        <?= $row['status'] ?>
-                      </span>
-                    </td>
-                    <td><?= $row['notes'] ? htmlspecialchars($row['notes']) : '<em class="text-muted">No notes</em>' ?></td>
-                    <td>
-                      <form method="POST" action="update_status.php" class="d-inline">
+                      <form method="POST" action="update_status.php" style="display: flex; align-items: center; gap: 0.5rem;">
                         <input type="hidden" name="appointment_id" value="<?= $row['id'] ?>">
-                        <select name="status" class="form-select form-select-sm" style="width: auto; display: inline-block; margin-right: 0.5rem;">
+                        <select name="status" class="form-select form-select-sm" style="width: auto; min-width: 130px;">
                           <option value="Pending" <?= $row['status'] === 'Pending' ? 'selected' : '' ?>>Pending</option>
                           <option value="Confirmed" <?= $row['status'] === 'Confirmed' ? 'selected' : '' ?>>Confirmed</option>
                           <option value="Completed" <?= $row['status'] === 'Completed' ? 'selected' : '' ?>>Completed</option>
                           <option value="Cancelled" <?= $row['status'] === 'Cancelled' ? 'selected' : '' ?>>Cancelled</option>
                         </select>
-                        <button type="submit" class="btn btn-sm btn-success">Update</button>
+                        <button type="submit" class="btn btn-success btn-sm">Update</button>
                       </form>
                     </td>
                   </tr>
@@ -558,34 +699,15 @@ $stats = [
             </table>
           </div>
         <?php else: ?>
-          <div class="alert alert-info">No appointments found.</div>
+          <div class="alert alert-info">No appointments found. Patients can book appointments through the booking system.</div>
         <?php endif; ?>
       </div>
     </div>
+
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Tab Switching Script -->
   <script>
-    // Dark Mode Toggle
-    const toggleBtn = document.getElementById('themeToggle');
-    const icon = document.getElementById('themeIcon');
-    const label = document.getElementById('themeLabel');
-
-    const prefersDark = localStorage.getItem('dark-mode') === 'true';
-    
-    if (prefersDark) {
-      document.body.classList.add('dark-mode');
-      label.textContent = 'Dark Mode';
-    }
-
-    toggleBtn.addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-      const isDark = document.body.classList.contains('dark-mode');
-      localStorage.setItem('dark-mode', isDark);
-      label.textContent = isDark ? 'Dark Mode' : 'Light Mode';
-    });
-
-    // Tab Switching
     const dashboardTab = document.getElementById('dashboardTab');
     const bookingsTab = document.getElementById('bookingsTab');
     const dashboardContent = document.getElementById('dashboardContent');
@@ -604,6 +726,35 @@ $stats = [
       bookingsContent.style.display = 'block';
       dashboardContent.style.display = 'none';
     });
+
+    // Dark Mode Toggle
+    const themeToggle = document.getElementById('themeToggle');
+    const themeIcon = document.getElementById('themeIcon');
+    const themeLabel = document.getElementById('themeLabel');
+    const body = document.body;
+
+    // Check for saved theme preference
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    if (currentTheme === 'dark') {
+      body.classList.add('dark-mode');
+      themeLabel.textContent = 'Dark Mode';
+      themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+    }
+
+    themeToggle.addEventListener('click', () => {
+      body.classList.toggle('dark-mode');
+      
+      if (body.classList.contains('dark-mode')) {
+        themeLabel.textContent = 'Dark Mode';
+        themeIcon.innerHTML = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+        localStorage.setItem('theme', 'dark');
+      } else {
+        themeLabel.textContent = 'Light Mode';
+        themeIcon.innerHTML = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
+        localStorage.setItem('theme', 'light');
+      }
+    });
   </script>
+
 </body>
 </html>
