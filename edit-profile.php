@@ -237,8 +237,8 @@ $user = array_merge([
     }
 
     .content-inner {
-      max-width: 900px;
-    }
+  max-width: 1400px;
+}
 
     .page-header {
       margin-bottom: 2rem;
@@ -318,6 +318,38 @@ $user = array_merge([
       color: var(--text-dark);
       transition: all 0.3s ease;
     }
+
+    .form-control::placeholder,
+.form-select::placeholder {
+  color: #99A3AE;
+  opacity: 0.7;
+}
+
+/* Placeholder colors for dark mode */
+body.dark-mode .form-control::placeholder,
+body.dark-mode .form-select::placeholder {
+  color: #6b7280;
+  opacity: 0.8;
+}
+
+/* Specific styling for textarea placeholders */
+textarea.form-control::placeholder {
+  color: #99A3AE;
+  opacity: 0.7;
+}
+
+body.dark-mode textarea.form-control::placeholder {
+  color: #6b7280;
+  opacity: 0.8;
+}
+
+.form-control:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary-teal);
+  box-shadow: 0 0 0 3px rgba(90, 208, 190, 0.1);
+  background: var(--card-bg);
+}
 
     .form-control:focus,
     .form-select:focus {
