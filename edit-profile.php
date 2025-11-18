@@ -4,29 +4,69 @@ if (!isset($_SESSION['user'])) {
   header("Location: login.php");
   exit;
 }
-include 'db.php';
+include 'supabase.php';
 
 $user_id = $_SESSION['user']['id'];
 $user_name = $_SESSION['user']['fullname'] ?? 'User';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $fullname = trim($_POST['fullname']);
-  $gender = $_POST['gender'];
-  $role = $_POST['role'];
+  $gender = !empty($_POST['gender']) ? $_POST['gender'] : null;
+  $age = !empty($_POST['age']) ? intval($_POST['age']) : null;
+  $phone = !empty($_POST['phone']) ? trim($_POST['phone']) : null;
+  $address = !empty($_POST['address']) ? trim($_POST['address']) : null;
+  $height = !empty($_POST['height']) ? intval($_POST['height']) : null;
+  $weight = !empty($_POST['weight']) ? floatval($_POST['weight']) : null;
+  $blood_group = !empty($_POST['blood_group']) ? trim($_POST['blood_group']) : null;
+  $emergency_contact_name = !empty($_POST['emergency_contact_name']) ? trim($_POST['emergency_contact_name']) : null;
+  $emergency_contact_relationship = !empty($_POST['emergency_contact_relationship']) ? trim($_POST['emergency_contact_relationship']) : null;
+  $emergency_contact_phone = !empty($_POST['emergency_contact_phone']) ? trim($_POST['emergency_contact_phone']) : null;
 
-  $stmt = $conn->prepare("UPDATE users SET fullname = ?, gender = ?, role = ? WHERE id = ?");
-  $stmt->bind_param("sssi", $fullname, $gender, $role, $user_id);
+  // Calculate BMI if height and weight are provided
+  $bmi = null;
+  if ($height && $weight) {
+    $heightInMeters = $height / 100;
+    $bmi = round($weight / ($heightInMeters * $heightInMeters), 2);
+  }
 
-  if ($stmt->execute()) {
+  // Update user profile using Supabase
+  $updateData = [
+    'fullname' => $fullname,
+    'gender' => $gender,
+    'age' => $age,
+    'phone' => $phone,
+    'address' => $address,
+    'height' => $height,
+    'weight' => $weight,
+    'blood_group' => $blood_group,
+    'bmi' => $bmi,
+    'emergency_contact_name' => $emergency_contact_name,
+    'emergency_contact_relationship' => $emergency_contact_relationship,
+    'emergency_contact_phone' => $emergency_contact_phone
+  ];
+
+  $result = supabaseUpdate('users', $updateData, ['id' => $user_id]);
+
+  if (!isset($result['error'])) {
+    // Update session
     $_SESSION['user']['fullname'] = $fullname;
     $_SESSION['user']['gender'] = $gender;
-    $_SESSION['user']['role'] = $role;
+    $_SESSION['user']['age'] = $age;
 
-    header("Location: profile.php?success=Profile updated");
+    header("Location: profile.php?success=Profile updated successfully");
     exit;
   } else {
-    $error = "Failed to update profile.";
+    $error = "Failed to update profile. Please try again.";
   }
+}
+
+// Fetch current user data
+$users = supabaseSelect('users', ['id' => $user_id]);
+$user = !empty($users) ? $users[0] : null;
+
+if (!$user) {
+  header("Location: logout.php");
+  exit;
 }
 ?>
 
@@ -63,7 +103,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    /* Dark Mode Variables - these colors replace light mode colors when dark mode is active */
     body.dark-mode {
       --bg-light: #1a1a1a;
       --sidebar-bg: #2a2a2a;
@@ -73,7 +112,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       --border-color: #3a3a3a;
     }
 
-    /* Sidebar */
     .sidebar {
       position: fixed;
       left: 0;
@@ -111,20 +149,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       text-decoration: none;
       text-transform: uppercase;
       letter-spacing: 0.5px;
-      transition: all 0.3s ease;
+      transition: background-color 0.2s ease, color 0.2s ease;
     }
 
     .sidebar .nav-link:hover {
       background-color: rgba(90, 208, 190, 0.1);
-      color: #5ad0be;
+      color: var(--primary-teal);
     }
 
     .sidebar .nav-link.active {
-      background-color: #5ad0be;
-      color: #ffffff;
+      background: linear-gradient(135deg, var(--primary-teal), var(--primary-teal-dark));
+      color: white;
     }
 
-    /* Dark Mode Toggle Button */
     .theme-toggle {
       margin-top: auto;
       padding-top: 1rem;
@@ -133,46 +170,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     .theme-toggle button {
       width: 100%;
-      padding: 0.65rem 1rem;
-      background: transparent;
-      border: 1px solid var(--border-color);
+      padding: 0.65rem;
+      border: none;
+      background: var(--card-bg);
       border-radius: 8px;
       color: var(--text-dark);
-      font-size: 0.625rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 0.5rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
       transition: all 0.3s ease;
     }
 
     .theme-toggle button:hover {
-      background-color: rgba(90, 208, 190, 0.1);
-      border-color: var(--primary-teal);
-      color: var(--primary-teal);
+      background: rgba(90, 208, 190, 0.1);
     }
 
-    /* Main Content Area */
     .main-wrapper {
       margin-left: 250px;
       padding: 2rem;
-      width: calc(100% - 250px);
       min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
     }
 
     .content-inner {
-      max-width: 800px;
-      width: 100%;
+      max-width: 900px;
     }
 
-    /* Header */
     .page-header {
       margin-bottom: 2rem;
     }
@@ -184,29 +210,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       margin-bottom: 0.5rem;
     }
 
-    .page-header .subtitle {
+    .subtitle {
       color: var(--text-muted);
       font-size: 0.95rem;
     }
 
-    /* Alert */
-    .alert {
-      border-radius: 8px;
-      border: none;
-      margin-bottom: 2rem;
-    }
-
-    .alert-danger {
-      background-color: rgba(239, 83, 80, 0.1);
-      color: #c62828;
-    }
-
-    body.dark-mode .alert-danger {
-      background-color: rgba(239, 83, 80, 0.2);
-      color: #ef5350;
-    }
-
-    /* Form Card */
     .form-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -220,7 +228,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
-    /* Form Elements */
+    .form-section-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 2px solid var(--primary-teal);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
     .form-group {
       margin-bottom: 1.5rem;
     }
@@ -231,6 +257,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       font-weight: 600;
       color: var(--text-dark);
       margin-bottom: 0.5rem;
+    }
+
+    .form-label-optional {
+      font-size: 0.75rem;
+      font-weight: 400;
+      color: var(--text-muted);
+      margin-left: 0.25rem;
     }
 
     .form-control,
@@ -253,7 +286,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       background: var(--card-bg);
     }
 
-    /* Dark mode specific styling for form inputs */
     body.dark-mode .form-control,
     body.dark-mode .form-select {
       background: #1a1a1a;
@@ -265,7 +297,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       background: #2a2a2a;
     }
 
-    /* Buttons */
     .button-group {
       display: flex;
       gap: 1rem;
@@ -294,85 +325,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     .btn-cancel {
       background: transparent;
-      border: 1px solid var(--border-color);
       color: var(--text-muted);
+      border: 1px solid var(--border-color);
       padding: 0.875rem 2rem;
       border-radius: 8px;
       font-weight: 600;
       font-size: 0.95rem;
-      cursor: pointer;
-      transition: all 0.3s ease;
       text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
+      display: inline-block;
+      transition: all 0.3s ease;
     }
 
     .btn-cancel:hover {
       background: var(--bg-light);
-      border-color: var(--primary-teal);
-      color: var(--primary-teal);
+      color: var(--text-dark);
+      border-color: var(--text-muted);
     }
 
-    /* Responsive */
-    @media (max-width: 768px) {
-      .sidebar {
-        transform: translateX(-100%);
-      }
-      
-      .main-wrapper {
-        margin-left: 0;
-        width: 100%;
-        padding: 1.5rem;
-      }
-
-      .button-group {
-        flex-direction: column;
-      }
-
-      .btn-save,
-      .btn-cancel {
-        width: 100%;
-      }
+    .alert {
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
     }
   </style>
 </head>
 <body>
-
   <!-- Sidebar -->
   <div class="sidebar">
     <div class="logo-wrapper">
-      <img src="images/Mindcare.png" alt="MindCare Logo" class="logo-img" />
+      <img src="images/MindCare1.png" alt="MindCare Logo" class="logo-img" />
     </div>
 
-    <nav class="nav flex-column" style="flex: 1;">
-      <a class="nav-link" href="dashboard.php">
+    <nav>
+      <a href="dashboard.php" class="nav-link">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
         DASHBOARD
       </a>
-      <a class="nav-link" href="assessment.php">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-        ASSESSMENT
-      </a>
-      <a class="nav-link" href="book_appointment.php">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-        BOOK APPOINTMENT
-      </a>
-      <a class="nav-link" href="appointments.php">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
-        MY APPOINTMENTS
-      </a>
-      <a class="nav-link active" href="profile.php">
+      <a href="profile.php" class="nav-link active">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         PROFILE
       </a>
-      <a class="nav-link" href="faq.php">
+      <a href="assessment.php" class="nav-link">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
+        ASSESSMENT
+      </a>
+      <a href="book_appointment.php" class="nav-link">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+        APPOINTMENTS
+      </a>
+      <a href="notifications.php" class="nav-link">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        NOTIFICATIONS
+      </a>
+      <a href="support.php" class="nav-link">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
         FAQS
       </a>
     </nav>
 
-    <!-- Dark Mode Toggle Button -->
     <div class="theme-toggle">
       <button id="themeToggle">
         <span id="themeIcon">🌞</span>
@@ -380,7 +390,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       </button>
     </div>
 
-    <!-- Logout Button -->
     <a href="logout.php" class="nav-link" style="margin-top: 1rem; color: #ef5350; border-top: 1px solid var(--border-color); padding-top: 1rem;">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
       LOGOUT
@@ -408,36 +417,208 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <!-- Form Card -->
       <div class="form-card">
         <form method="POST">
+          
+          <!-- Basic Information Section -->
+          <div class="form-section-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            Basic Information
+          </div>
+
           <div class="form-group">
-            <label for="fullname" class="form-label">Full Name</label>
+            <label for="fullname" class="form-label">
+              Full Name <span class="form-label-optional">(required)</span>
+            </label>
             <input 
               type="text" 
               id="fullname"
               name="fullname" 
               class="form-control" 
-              value="<?= htmlspecialchars($_SESSION['user']['fullname']) ?>" 
+              value="<?= htmlspecialchars($user['fullname'] ?? '') ?>" 
               placeholder="Enter your full name"
               required 
             />
           </div>
 
-          <div class="form-group">
-            <label for="gender" class="form-label">Gender</label>
-            <select id="gender" name="gender" class="form-select" required>
-              <option value="">Select gender</option>
-              <option value="Male" <?= $_SESSION['user']['gender'] === 'Male' ? 'selected' : '' ?>>Male</option>
-              <option value="Female" <?= $_SESSION['user']['gender'] === 'Female' ? 'selected' : '' ?>>Female</option>
-              <option value="Other" <?= $_SESSION['user']['gender'] === 'Other' ? 'selected' : '' ?>>Other</option>
-            </select>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="gender" class="form-label">
+                Gender <span class="form-label-optional">(optional)</span>
+              </label>
+              <select id="gender" name="gender" class="form-select">
+                <option value="">Select gender</option>
+                <option value="Male" <?= ($user['gender'] ?? '') === 'Male' ? 'selected' : '' ?>>Male</option>
+                <option value="Female" <?= ($user['gender'] ?? '') === 'Female' ? 'selected' : '' ?>>Female</option>
+                <option value="Other" <?= ($user['gender'] ?? '') === 'Other' ? 'selected' : '' ?>>Other</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="age" class="form-label">
+                Age <span class="form-label-optional">(optional)</span>
+              </label>
+              <input 
+                type="number" 
+                id="age"
+                name="age" 
+                class="form-control" 
+                value="<?= htmlspecialchars($user['age'] ?? '') ?>" 
+                placeholder="Enter your age"
+                min="1"
+                max="120"
+              />
+            </div>
+          </div>
+
+          <!-- Contact Information Section -->
+          <div class="form-section-title" style="margin-top: 2rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
+            Contact Information
           </div>
 
           <div class="form-group">
-            <label for="role" class="form-label">Role</label>
-            <select id="role" name="role" class="form-select" required>
-              <option value="">Select role</option>
-              <option value="Patient" <?= $_SESSION['user']['role'] === 'Patient' ? 'selected' : '' ?>>Patient</option>
-              <option value="Specialist" <?= $_SESSION['user']['role'] === 'Specialist' ? 'selected' : '' ?>>Specialist</option>
+            <label for="phone" class="form-label">
+              Phone Number <span class="form-label-optional">(optional)</span>
+            </label>
+            <input 
+              type="text" 
+              id="phone"
+              name="phone" 
+              class="form-control" 
+              value="<?= htmlspecialchars($user['phone'] ?? '') ?>" 
+              placeholder="+63 912 345 6780"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="address" class="form-label">
+              Address <span class="form-label-optional">(optional)</span>
+            </label>
+            <textarea 
+              id="address"
+              name="address" 
+              class="form-control" 
+              rows="3"
+              placeholder="Enter your complete address"
+            ><?= htmlspecialchars($user['address'] ?? '') ?></textarea>
+          </div>
+
+          <!-- Health Information Section -->
+          <div class="form-section-title" style="margin-top: 2rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+            Health Information
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="height" class="form-label">
+                Height (cm) <span class="form-label-optional">(optional)</span>
+              </label>
+              <input 
+                type="number" 
+                id="height"
+                name="height" 
+                class="form-control" 
+                value="<?= htmlspecialchars($user['height'] ?? '') ?>" 
+                placeholder="165"
+                min="1"
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="weight" class="form-label">
+                Weight (kg) <span class="form-label-optional">(optional)</span>
+              </label>
+              <input 
+                type="number" 
+                id="weight"
+                name="weight" 
+                class="form-control" 
+                value="<?= htmlspecialchars($user['weight'] ?? '') ?>" 
+                placeholder="62"
+                step="0.01"
+                min="1"
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="blood_group" class="form-label">
+              Blood Group <span class="form-label-optional">(optional)</span>
+            </label>
+            <select id="blood_group" name="blood_group" class="form-select">
+              <option value="">Select blood group</option>
+              <option value="A+" <?= ($user['blood_group'] ?? '') === 'A+' ? 'selected' : '' ?>>A+</option>
+              <option value="A-" <?= ($user['blood_group'] ?? '') === 'A-' ? 'selected' : '' ?>>A-</option>
+              <option value="B+" <?= ($user['blood_group'] ?? '') === 'B+' ? 'selected' : '' ?>>B+</option>
+              <option value="B-" <?= ($user['blood_group'] ?? '') === 'B-' ? 'selected' : '' ?>>B-</option>
+              <option value="O+" <?= ($user['blood_group'] ?? '') === 'O+' ? 'selected' : '' ?>>O+</option>
+              <option value="O-" <?= ($user['blood_group'] ?? '') === 'O-' ? 'selected' : '' ?>>O-</option>
+              <option value="AB+" <?= ($user['blood_group'] ?? '') === 'AB+' ? 'selected' : '' ?>>AB+</option>
+              <option value="AB-" <?= ($user['blood_group'] ?? '') === 'AB-' ? 'selected' : '' ?>>AB-</option>
             </select>
+          </div>
+
+          <?php if (!empty($user['bmi'])): ?>
+          <div class="form-group">
+            <label class="form-label">BMI (Calculated Automatically)</label>
+            <input 
+              type="text" 
+              class="form-control" 
+              value="<?= htmlspecialchars($user['bmi']) ?>" 
+              readonly
+              style="background: var(--bg-light); cursor: not-allowed;"
+            />
+          </div>
+          <?php endif; ?>
+
+          <!-- Emergency Contact Section -->
+          <div class="form-section-title" style="margin-top: 2rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+            Emergency Contact
+          </div>
+
+          <div class="form-group">
+            <label for="emergency_contact_name" class="form-label">
+              Contact Name <span class="form-label-optional">(optional)</span>
+            </label>
+            <input 
+              type="text" 
+              id="emergency_contact_name"
+              name="emergency_contact_name" 
+              class="form-control" 
+              value="<?= htmlspecialchars($user['emergency_contact_name'] ?? '') ?>" 
+              placeholder="Enter emergency contact name"
+            />
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="emergency_contact_relationship" class="form-label">
+                Relationship <span class="form-label-optional">(optional)</span>
+              </label>
+              <input 
+                type="text" 
+                id="emergency_contact_relationship"
+                name="emergency_contact_relationship" 
+                class="form-control" 
+                value="<?= htmlspecialchars($user['emergency_contact_relationship'] ?? '') ?>" 
+                placeholder="Spouse, Parent, Sibling, etc."
+              />
+            </div>
+
+            <div class="form-group">
+              <label for="emergency_contact_phone" class="form-label">
+                Contact Phone <span class="form-label-optional">(optional)</span>
+              </label>
+              <input 
+                type="text" 
+                id="emergency_contact_phone"
+                name="emergency_contact_phone" 
+                class="form-control" 
+                value="<?= htmlspecialchars($user['emergency_contact_phone'] ?? '') ?>" 
+                placeholder="+63 912 345 6789"
+              />
+            </div>
           </div>
 
           <div class="button-group">
@@ -453,50 +634,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Dark Mode Toggle Functionality
-    // This script handles switching between light and dark color schemes
-    
-    // Get references to the toggle button and its visual elements
-    const toggleBtn = document.getElementById('themeToggle'); // The clickable button
-    const icon = document.getElementById('themeIcon'); // The emoji icon (sun/moon)
-    const label = document.getElementById('themeLabel'); // The text label
+    const toggleBtn = document.getElementById('themeToggle');
+    const icon = document.getElementById('themeIcon');
+    const label = document.getElementById('themeLabel');
 
-    // Check if user previously saved a theme preference in browser's localStorage
-    // localStorage is a way to save data that persists even after closing the browser
     const prefersDark = localStorage.getItem('dark-mode') === 'true';
     
-    // If user prefers dark mode, apply it immediately when page loads
     if (prefersDark) {
-      document.body.classList.add('dark-mode'); // Add CSS class that triggers dark colors
-      icon.textContent = '🌙'; // Change icon to moon
-      label.textContent = 'Dark Mode'; // Update label
+      document.body.classList.add('dark-mode');
+      icon.textContent = '🌙';
+      label.textContent = 'Dark Mode';
     }
 
-    // Add click event listener to the toggle button
     toggleBtn.addEventListener('click', () => {
-      // Toggle the 'dark-mode' class on the body element
-      // If it's there, remove it. If it's not there, add it.
       document.body.classList.toggle('dark-mode');
-      
-      // Check if dark mode is now active after the toggle
       const isDark = document.body.classList.contains('dark-mode');
-      
-      // Save the user's preference to localStorage
-      // This way, their choice persists across page visits and browser sessions
       localStorage.setItem('dark-mode', isDark);
-      
-      // Add a smooth rotation animation to the icon for visual feedback
-      icon.style.transform = 'rotate(360deg)'; // Spin 360 degrees
-      setTimeout(() => icon.style.transform = 'rotate(0deg)', 500); // Reset after 500ms
-      
-      // Update the icon and label text based on the current theme
-      // Ternary operator: if isDark is true, use moon icon, else use sun icon
+      icon.style.transform = 'rotate(360deg)';
+      setTimeout(() => icon.style.transform = 'rotate(0deg)', 500);
       icon.textContent = isDark ? '🌙' : '🌞';
       label.textContent = isDark ? 'Dark Mode' : 'Light Mode';
     });
-
-    // Add CSS transition property to make the icon rotation smooth
-    icon.style.transition = 'transform 0.5s ease';
   </script>
 </body>
 </html>

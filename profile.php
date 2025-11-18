@@ -5,9 +5,58 @@ if (!isset($_SESSION['user'])) {
   exit;
 }
 
-$user = $_SESSION['user'];
+// CHANGE 1: Add Supabase connection
+include 'supabase.php';
+
+// CHANGE 2: Fetch fresh user data from database
+$user_id = $_SESSION['user']['id'];
+$users = supabaseSelect('users', ['id' => $user_id]);
+$user = !empty($users) ? $users[0] : null;
+
+if (!$user) {
+  header("Location: logout.php");
+  exit;
+}
+
+// CHANGE 3: Update session with latest data
+$_SESSION['user'] = $user;
+
+// Keep original code
 $user_name = $user['fullname'] ?? 'User';
 $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== false ? substr($user_name, strpos($user_name, ' ') + 1, 1) : ''));
+
+// CHANGE 4: Fetch real appointment dates from database
+// Get last completed appointment
+$lastVisitQuery = supabaseSelect(
+  'appointments',
+  ['user_id' => $user_id, 'status' => 'Completed'],
+  'appointment_date,appointment_time',
+  'appointment_date.desc,appointment_time.desc',
+  1
+);
+$lastVisit = !empty($lastVisitQuery) ? $lastVisitQuery[0] : null;
+
+// Get next upcoming appointment (Pending or Confirmed, future date)
+$today = date('Y-m-d');
+$upcomingQuery = supabaseSelect(
+  'appointments',
+  ['user_id' => $user_id],
+  'appointment_date,appointment_time,status',
+  'appointment_date.asc,appointment_time.asc',
+  10
+);
+
+// Filter for future appointments with Pending or Confirmed status
+$nextAppointment = null;
+if (!empty($upcomingQuery)) {
+  foreach ($upcomingQuery as $apt) {
+    if ($apt['appointment_date'] >= $today && 
+        ($apt['status'] === 'Pending' || $apt['status'] === 'Confirmed')) {
+      $nextAppointment = $apt;
+      break;
+    }
+  }
+}
 ?>
 
 <!DOCTYPE html>
@@ -43,7 +92,6 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
       transition: background-color 0.3s ease, color 0.3s ease;
     }
 
-    /* Dark Mode Variables - these override the light mode colors when dark mode is active */
     body.dark-mode {
       --bg-light: #1a1a1a;
       --sidebar-bg: #2a2a2a;
@@ -53,7 +101,6 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
       --border-color: #3a3a3a;
     }
 
-    /* Sidebar */
     .sidebar {
       position: fixed;
       left: 0;
@@ -96,15 +143,14 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
 
     .sidebar .nav-link:hover {
       background-color: rgba(90, 208, 190, 0.1);
-      color: #5ad0be;
+      color: var(--primary-teal);
     }
 
     .sidebar .nav-link.active {
-      background-color: #5ad0be;
-      color: #ffffff;
+      background-color: var(--primary-teal);
+      color: white;
     }
 
-    /* Dark Mode Toggle Button - positioned above the logout button */
     .theme-toggle {
       margin-top: auto;
       padding-top: 1rem;
@@ -113,43 +159,35 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
 
     .theme-toggle button {
       width: 100%;
-      padding: 0.65rem 1rem;
-      background: transparent;
-      border: 1px solid var(--border-color);
+      padding: 0.65rem;
+      border: none;
+      background: var(--card-bg);
       border-radius: 8px;
       color: var(--text-dark);
-      font-size: 0.625rem;
-      font-weight: 500;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      justify-content: center;
       gap: 0.5rem;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
       transition: all 0.3s ease;
     }
 
     .theme-toggle button:hover {
-      background-color: rgba(90, 208, 190, 0.1);
-      border-color: var(--primary-teal);
-      color: var(--primary-teal);
+      background: rgba(90, 208, 190, 0.1);
     }
 
-    /* Main Content Area */
     .main-wrapper {
       margin-left: 250px;
       padding: 2rem;
-      width: calc(100% - 250px);
       min-height: 100vh;
     }
 
     .content-inner {
       max-width: 1200px;
-      width: 100%;
     }
 
-    /* Header */
     .page-header {
       display: flex;
       justify-content: space-between;
@@ -164,12 +202,12 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
     }
 
     .btn-edit {
-      background-color: var(--primary-teal);
+      background: linear-gradient(135deg, var(--primary-teal), var(--primary-teal-dark));
       color: white;
       border: none;
       padding: 0.65rem 1.5rem;
       border-radius: 8px;
-      font-weight: 500;
+      font-weight: 600;
       font-size: 0.9rem;
       cursor: pointer;
       transition: all 0.3s ease;
@@ -177,31 +215,21 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
+      box-shadow: 0 4px 12px rgba(90, 208, 190, 0.3);
     }
 
     .btn-edit:hover {
-      background-color: var(--primary-teal-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 16px rgba(90, 208, 190, 0.4);
       color: white;
     }
 
-    /* Alert */
     .alert {
       border-radius: 8px;
       border: none;
       margin-bottom: 2rem;
     }
 
-    .alert-success {
-      background-color: rgba(90, 208, 190, 0.1);
-      color: var(--primary-teal-dark);
-    }
-
-    body.dark-mode .alert-success {
-      background-color: rgba(90, 208, 190, 0.2);
-      color: var(--primary-teal);
-    }
-
-    /* Profile Card */
     .profile-card {
       background: var(--card-bg);
       border: 1px solid var(--border-color);
@@ -261,24 +289,15 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
       flex-wrap: wrap;
     }
 
-    .contact-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-
-    .contact-item svg {
-      width: 18px;
-      height: 18px;
-      color: var(--text-muted);
-    }
-
     .contact-label {
       font-size: 0.75rem;
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
       margin-bottom: 0.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
     }
 
     .contact-value {
@@ -287,10 +306,15 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
       font-weight: 500;
     }
 
-    /* Info Grid */
+    .not-set {
+      color: var(--text-muted);
+      font-style: italic;
+      font-weight: 400;
+    }
+
     .info-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
       gap: 1.5rem;
       margin-bottom: 2rem;
     }
@@ -327,6 +351,7 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
     .info-item {
       display: flex;
       justify-content: space-between;
+      align-items: center;
       padding: 0.75rem 0;
       border-bottom: 1px solid var(--border-color);
     }
@@ -336,17 +361,17 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
     }
 
     .info-label {
-      font-size: 0.85rem;
+      font-size: 0.875rem;
       color: var(--text-muted);
-    }
-
-    .info-value {
-      font-size: 0.9rem;
-      color: var(--text-dark);
       font-weight: 500;
     }
 
-    /* Appointment Cards */
+    .info-value {
+      font-size: 0.95rem;
+      color: var(--text-dark);
+      font-weight: 600;
+    }
+
     .appointment-cards {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -360,106 +385,58 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
       border-radius: 12px;
       padding: 1.5rem;
       box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-      transition: background-color 0.3s ease, border-color 0.3s ease;
-    }
-
-    body.dark-mode .appointment-card {
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     }
 
     .appointment-label {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      font-size: 0.8rem;
+      font-size: 0.875rem;
       color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
       margin-bottom: 0.5rem;
     }
 
-    .appointment-label svg {
-      width: 18px;
-      height: 18px;
-      color: var(--primary-teal);
-    }
-
     .appointment-date {
-      font-size: 1.25rem;
-      font-weight: 700;
+      font-size: 1.1rem;
+      font-weight: 600;
       color: var(--text-dark);
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .sidebar {
-        transform: translateX(-100%);
-      }
-      
-      .main-wrapper {
-        margin-left: 0;
-        width: 100%;
-        padding: 1.5rem;
-      }
-
-      .page-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-      }
-
-      .profile-header {
-        flex-direction: column;
-        text-align: center;
-      }
-
-      .contact-row {
-        flex-direction: column;
-        gap: 1rem;
-      }
-
-      .info-grid {
-        grid-template-columns: 1fr;
-      }
     }
   </style>
 </head>
 <body>
-
   <!-- Sidebar -->
   <div class="sidebar">
     <div class="logo-wrapper">
-      <img src="images/Mindcare.png" alt="MindCare Logo" class="logo-img" />
+      <img src="images/MindCare1.png" alt="MindCare Logo" class="logo-img" />
     </div>
 
-    <nav class="nav flex-column" style="flex: 1;">
-      <a class="nav-link" href="dashboard.php">
+    <nav>
+      <a href="dashboard.php" class="nav-link">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
         DASHBOARD
       </a>
-      <a class="nav-link" href="assessment.php">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      <a href="assessment.php" class="nav-link">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"></path><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path></svg>
         ASSESSMENT
       </a>
-      <a class="nav-link" href="book_appointment.php">
+      <a href="book_appointment.php" class="nav-link">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-        BOOK APPOINTMENT
+        APPOINTMENTS
       </a>
       <a class="nav-link" href="appointments.php">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
         MY APPOINTMENTS
       </a>
-      <a class="nav-link active" href="profile.php">
+      <a href="profile.php" class="nav-link active">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
         PROFILE
       </a>
-      <a class="nav-link" href="faq.php">
+      <a href="faq.php" class="nav-link">
         <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
         FAQS
       </a>
     </nav>
 
-    <!-- Dark Mode Toggle Button -->
     <div class="theme-toggle">
       <button id="themeToggle">
         <span id="themeIcon">🌞</span>
@@ -467,7 +444,6 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
       </button>
     </div>
 
-    <!-- Logout Button -->
     <a href="logout.php" class="nav-link" style="margin-top: 1rem; color: #ef5350; border-top: 1px solid var(--border-color); padding-top: 1rem;">
       <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
       LOGOUT
@@ -501,14 +477,26 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
           <div class="avatar-circle"><?= $initials ?></div>
           <div class="profile-info">
             <div class="profile-name"><?= htmlspecialchars($user_name) ?></div>
-            <div class="profile-meta"><?= htmlspecialchars($user['gender']) ?> • <?= htmlspecialchars($user['role']) ?></div>
+            <div class="profile-meta">
+              <?= htmlspecialchars($user['gender'] ?? 'Not specified') ?> 
+              <?php if (!empty($user['age'])): ?>
+                • <?= htmlspecialchars($user['age']) ?> years old
+              <?php endif; ?>
+              • <?= htmlspecialchars($user['role'] ?? 'Patient') ?>
+            </div>
             <div class="contact-row">
               <div>
                 <div class="contact-label">
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg>
                   Phone
                 </div>
-                <div class="contact-value">+63 912 345 6780</div>
+                <div class="contact-value">
+                  <?php if (!empty($user['phone'])): ?>
+                    <?= htmlspecialchars($user['phone']) ?>
+                  <?php else: ?>
+                    <span class="not-set">Not set</span>
+                  <?php endif; ?>
+                </div>
               </div>
               <div>
                 <div class="contact-label">
@@ -522,7 +510,13 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
                   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                   Address
                 </div>
-                <div class="contact-value">123 4th Ave, Manila</div>
+                <div class="contact-value">
+                  <?php if (!empty($user['address'])): ?>
+                    <?= htmlspecialchars($user['address']) ?>
+                  <?php else: ?>
+                    <span class="not-set">Not set</span>
+                  <?php endif; ?>
+                </div>
               </div>
             </div>
           </div>
@@ -536,14 +530,26 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
             Last Visit
           </div>
-          <div class="appointment-date">November 09, 2025</div>
+          <div class="appointment-date">
+            <?php if ($lastVisit): ?>
+              <?= date('F d, Y', strtotime($lastVisit['appointment_date'])) ?>
+            <?php else: ?>
+              <span class="not-set">No visits yet</span>
+            <?php endif; ?>
+          </div>
         </div>
         <div class="appointment-card">
           <div class="appointment-label">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
             Next Appointment
           </div>
-          <div class="appointment-date">November 13, 2025</div>
+          <div class="appointment-date">
+            <?php if ($nextAppointment): ?>
+              <?= date('F d, Y', strtotime($nextAppointment['appointment_date'])) ?>
+            <?php else: ?>
+              <span class="not-set">No upcoming appointments</span>
+            <?php endif; ?>
+          </div>
         </div>
       </div>
 
@@ -557,19 +563,43 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
           </h5>
           <div class="info-item">
             <span class="info-label">Height</span>
-            <span class="info-value">165 cm</span>
+            <span class="info-value">
+              <?php if (!empty($user['height'])): ?>
+                <?= htmlspecialchars($user['height']) ?> cm
+              <?php else: ?>
+                <span class="not-set">Not set</span>
+              <?php endif; ?>
+            </span>
           </div>
           <div class="info-item">
             <span class="info-label">Weight</span>
-            <span class="info-value">62 kg</span>
+            <span class="info-value">
+              <?php if (!empty($user['weight'])): ?>
+                <?= htmlspecialchars($user['weight']) ?> kg
+              <?php else: ?>
+                <span class="not-set">Not set</span>
+              <?php endif; ?>
+            </span>
           </div>
           <div class="info-item">
             <span class="info-label">Blood Group</span>
-            <span class="info-value">O+</span>
+            <span class="info-value">
+              <?php if (!empty($user['blood_group'])): ?>
+                <?= htmlspecialchars($user['blood_group']) ?>
+              <?php else: ?>
+                <span class="not-set">Not set</span>
+              <?php endif; ?>
+            </span>
           </div>
           <div class="info-item">
             <span class="info-label">BMI</span>
-            <span class="info-value">22.8</span>
+            <span class="info-value">
+              <?php if (!empty($user['bmi'])): ?>
+                <?= htmlspecialchars($user['bmi']) ?>
+              <?php else: ?>
+                <span class="not-set">Not set</span>
+              <?php endif; ?>
+            </span>
           </div>
         </div>
 
@@ -581,15 +611,33 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
           </h5>
           <div class="info-item">
             <span class="info-label">Name</span>
-            <span class="info-value">Juana Dela Cruz</span>
+            <span class="info-value">
+              <?php if (!empty($user['emergency_contact_name'])): ?>
+                <?= htmlspecialchars($user['emergency_contact_name']) ?>
+              <?php else: ?>
+                <span class="not-set">Not set</span>
+              <?php endif; ?>
+            </span>
           </div>
           <div class="info-item">
             <span class="info-label">Relationship</span>
-            <span class="info-value">Spouse</span>
+            <span class="info-value">
+              <?php if (!empty($user['emergency_contact_relationship'])): ?>
+                <?= htmlspecialchars($user['emergency_contact_relationship']) ?>
+              <?php else: ?>
+                <span class="not-set">Not set</span>
+              <?php endif; ?>
+            </span>
           </div>
           <div class="info-item">
             <span class="info-label">Phone</span>
-            <span class="info-value">+63 912 345 6789</span>
+            <span class="info-value">
+              <?php if (!empty($user['emergency_contact_phone'])): ?>
+                <?= htmlspecialchars($user['emergency_contact_phone']) ?>
+              <?php else: ?>
+                <span class="not-set">Not set</span>
+              <?php endif; ?>
+            </span>
           </div>
         </div>
       </div>
@@ -600,50 +648,27 @@ $initials = strtoupper(substr($user_name, 0, 1) . (strpos($user_name, ' ') !== f
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // Dark mode toggle functionality
-    // This script handles switching between light and dark themes
-    
-    // Get references to the toggle button and its components
-    const toggleBtn = document.getElementById('themeToggle'); // The button element
-    const icon = document.getElementById('themeIcon'); // The emoji icon (sun/moon)
-    const label = document.getElementById('themeLabel'); // The text label
+    const toggleBtn = document.getElementById('themeToggle');
+    const icon = document.getElementById('themeIcon');
+    const label = document.getElementById('themeLabel');
 
-    // Check if user has previously saved a theme preference in browser storage
-    // localStorage.getItem() retrieves the saved value
-    // If 'dark-mode' is 'true', then user prefers dark mode
     const prefersDark = localStorage.getItem('dark-mode') === 'true';
     
-    // If user prefers dark mode, apply it when page loads
     if (prefersDark) {
-      document.body.classList.add('dark-mode'); // Add the 'dark-mode' class to body
-      icon.textContent = '🌙'; // Change icon to moon
-      label.textContent = 'Dark Mode'; // Update label text
+      document.body.classList.add('dark-mode');
+      icon.textContent = '🌙';
+      label.textContent = 'Dark Mode';
     }
 
-    // Add click event listener to toggle button
     toggleBtn.addEventListener('click', () => {
-      // Toggle (add if not present, remove if present) the 'dark-mode' class on body element
       document.body.classList.toggle('dark-mode');
-      
-      // Check if dark mode is currently active after the toggle
       const isDark = document.body.classList.contains('dark-mode');
-      
-      // Save the user's preference to browser's localStorage
-      // This persists across page refreshes and browser sessions
       localStorage.setItem('dark-mode', isDark);
-      
-      // Animate the icon with a rotation effect
-      icon.style.transform = 'rotate(360deg)'; // Rotate 360 degrees
-      setTimeout(() => icon.style.transform = 'rotate(0deg)', 500); // Reset after 500ms
-      
-      // Update the icon and label based on current theme
-      // If dark mode: show moon icon, else show sun icon
+      icon.style.transform = 'rotate(360deg)';
+      setTimeout(() => icon.style.transform = 'rotate(0deg)', 500);
       icon.textContent = isDark ? '🌙' : '🌞';
       label.textContent = isDark ? 'Dark Mode' : 'Light Mode';
     });
-
-    // Add smooth transition effect for the icon rotation animation
-    icon.style.transition = 'transform 0.5s ease';
   </script>
 </body>
 </html>

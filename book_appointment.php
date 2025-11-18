@@ -156,9 +156,8 @@ if (empty($specialists)) {
     }
 
     .sidebar .nav-link.active {
-      background-color: rgba(90, 208, 190, 0.15);
-      color: var(--primary-teal);
-      font-weight: 600;
+      background-color: var(--primary-teal);
+      color: white;
     }
 
     /* Theme Toggle */
