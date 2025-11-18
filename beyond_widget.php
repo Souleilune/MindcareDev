@@ -167,10 +167,11 @@ body.dark-mode .beyond-chat-messages {
 .beyond-message.user {
   justify-content: flex-end;
   padding-right: 0;
+  margin-left: 60px;
 }
 
 .beyond-message.user .beyond-message-content {
-  max-width: 85%;
+  max-width: 95%;
   min-width: 80px;
 }
 

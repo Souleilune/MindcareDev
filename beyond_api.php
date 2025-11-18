@@ -249,6 +249,21 @@ function getFallbackResponse($message) {
     $messageLower = strtolower(trim($message));
     
     // ========================================
+    // QUICK ACTION: OPERATING HOURS
+    // ========================================
+    if (preg_match('/(what are|what\'s).*(operating hours|office hours|hours|open)/i', $messageLower) ||
+        preg_match('/^(hours|operating hours|office hours)$/i', $messageLower)) {
+        return "Our platform is available 24/7 for you to browse, book appointments, and access resources anytime. Our specialists are generally available Monday through Friday from 9:00 AM to 6:00 PM, and Saturdays from 10:00 AM to 4:00 PM. Each specialist sets their own schedule, so you'll see their specific available times when you're booking. Is there a particular time that works best for you?";
+    }
+    
+    // ========================================
+    // QUICK ACTION: HOW TO RESCHEDULE
+    // ========================================
+    if (preg_match('/(how do i|how to|how can i).*(reschedule|change|move).*(appointment)/i', $messageLower)) {
+        return "To reschedule, go to My Appointments in your dashboard, find the appointment you want to change, and click Reschedule. You'll be able to choose a new date and time from the available slots. Just try to do it at least 24 hours before your appointment if you can. If you're having any trouble or need to reschedule something sooner, let me know and I can help.";
+    }
+    
+    // ========================================
     // OVERWHELMED / EVERYTHING
     // ========================================
     if (preg_match('/^(everything|everything is on my mind|too much|all of it)$/i', $messageLower)) {
@@ -343,6 +358,7 @@ function getFallbackResponse($message) {
     // QUESTIONS ABOUT BOOKING
     // ========================================
     if (strpos($messageLower, 'how to book') !== false || 
+        strpos($messageLower, 'how do i book') !== false ||
         strpos($messageLower, 'book appointment') !== false || 
         strpos($messageLower, 'schedule') !== false) {
         return "You can book an appointment by going to the Book Appointment page. You'll see our specialists with their info and backgrounds - choose someone who feels like a good fit, pick a date and time that works for you, and confirm. If you need help navigating it or have any questions, just let me know.";
