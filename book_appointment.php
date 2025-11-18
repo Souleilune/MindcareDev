@@ -163,30 +163,33 @@ if (empty($specialists)) {
     /* Theme Toggle */
     .theme-toggle {
       margin-top: auto;
-      padding: 0.5rem;
-      border-top: 1px solid var(--border-color);
       padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
     }
 
     .theme-toggle button {
       width: 100%;
-      padding: 0.5rem;
+      padding: 0.65rem 1rem;
+      background: transparent;
       border: 1px solid var(--border-color);
-      border-radius: 6px;
-      background-color: var(--card-bg);
+      border-radius: 8px;
       color: var(--text-dark);
+      font-size: 0.625rem;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 0.5rem;
-      cursor: pointer;
       transition: all 0.3s ease;
     }
 
     .theme-toggle button:hover {
-      background-color: var(--primary-teal);
-      color: white;
+      background-color: rgba(90, 208, 190, 0.1);
       border-color: var(--primary-teal);
+      color: var(--primary-teal);
     }
 
     /* Main Wrapper */
@@ -842,7 +845,7 @@ if (empty($specialists)) {
         BOOK APPOINTMENT
       </a>
       <a class="nav-link" href="appointments.php">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><polyline points="17 11 19 13 23 9"></polyline></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
         MY APPOINTMENTS
       </a>
       <a class="nav-link" href="profile.php">
@@ -857,11 +860,22 @@ if (empty($specialists)) {
 
     <!-- Dark Mode Toggle -->
     <div class="theme-toggle">
-      <button id="themeToggle">
-        <span id="themeIcon">🌞</span>
-        <span id="themeLabel">Light Mode</span>
-      </button>
-    </div>
+  <button id="themeToggle">
+    <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Sun icon (default for light mode) -->
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+    <span id="themeLabel">Light Mode</span>
+  </button>
+</div>
 
     <!-- Logout Button at Bottom -->
     <a href="logout.php" class="nav-link" style="margin-top: 1rem; color: #ef5350; border-top: 1px solid var(--border-color); padding-top: 1rem;">
@@ -1039,28 +1053,41 @@ if (empty($specialists)) {
     // ============================================
     // DARK MODE TOGGLE
     // ============================================
-    const themeToggle = document.getElementById('themeToggle');
-    const themeIcon = document.getElementById('themeIcon');
-    const themeLabel = document.getElementById('themeLabel');
+    // Dark mode toggle with SVG icons
+const toggleBtn = document.getElementById('themeToggle');
+const icon = document.getElementById('themeIcon');
+const label = document.getElementById('themeLabel');
 
-    if (localStorage.getItem('theme') === 'dark') {
-      document.body.classList.add('dark-mode');
-      themeIcon.textContent = '🌙';
-      themeLabel.textContent = 'Dark Mode';
-    }
+// SVG icon strings
+const sunIcon = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
 
-    themeToggle.addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-      if (document.body.classList.contains('dark-mode')) {
-        themeIcon.textContent = '🌙';
-        themeLabel.textContent = 'Dark Mode';
-        localStorage.setItem('theme', 'dark');
-      } else {
-        themeIcon.textContent = '🌞';
-        themeLabel.textContent = 'Light Mode';
-        localStorage.setItem('theme', 'light');
-      }
-    });
+const moonIcon = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
+
+// Check for saved theme preference
+const prefersDark = localStorage.getItem('dark-mode') === 'true';
+if (prefersDark) {
+  document.body.classList.add('dark-mode');
+  icon.innerHTML = moonIcon;
+  label.textContent = 'Dark Mode';
+}
+
+// Toggle theme
+toggleBtn.addEventListener('click', () => {
+  document.body.classList.toggle('dark-mode');
+  const isDark = document.body.classList.contains('dark-mode');
+  localStorage.setItem('dark-mode', isDark);
+  
+  // Animate icon
+  icon.style.transform = 'rotate(360deg)';
+  setTimeout(() => icon.style.transform = 'rotate(0deg)', 500);
+  
+  // Update icon and label
+  icon.innerHTML = isDark ? moonIcon : sunIcon;
+  label.textContent = isDark ? 'Dark Mode' : 'Light Mode';
+});
+
+// Smooth transition for icon
+icon.style.transition = 'transform 0.5s ease';
 
     // ============================================
     // SPECIALIST DATA (From PHP)

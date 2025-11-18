@@ -355,11 +355,22 @@ $user_name = $_SESSION['user']['fullname'] ?? 'User';
 
     <!-- Dark Mode Toggle Button -->
     <div class="theme-toggle">
-      <button id="themeToggle">
-        <span id="themeIcon">🌞</span>
-        <span id="themeLabel">Light Mode</span>
-      </button>
-    </div>
+  <button id="themeToggle">
+    <svg id="themeIcon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Sun icon (default for light mode) -->
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+    <span id="themeLabel">Light Mode</span>
+  </button>
+</div>
 
     <!-- Logout Button -->
     <a href="logout.php" class="nav-link" style="margin-top: 1rem; color: #ef5350; border-top: 1px solid var(--border-color); padding-top: 1rem;">
@@ -496,39 +507,41 @@ $user_name = $_SESSION['user']['fullname'] ?? 'User';
     });
 
     // Dark Mode Toggle Functionality
-    const toggleBtn = document.getElementById('themeToggle');
-    const icon = document.getElementById('themeIcon');
-    const label = document.getElementById('themeLabel');
+    // Dark mode toggle with SVG icons
+const toggleBtn = document.getElementById('themeToggle');
+const icon = document.getElementById('themeIcon');
+const label = document.getElementById('themeLabel');
 
-    // Check for saved theme preference in browser's localStorage
-    const prefersDark = localStorage.getItem('dark-mode') === 'true';
-    
-    // Apply dark mode if it was previously enabled
-    if (prefersDark) {
-      document.body.classList.add('dark-mode');
-      icon.textContent = '🌙';
-      label.textContent = 'Dark Mode';
-    }
+// SVG icon strings
+const sunIcon = '<circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>';
 
-    // Toggle dark mode when button is clicked
-    toggleBtn.addEventListener('click', () => {
-      document.body.classList.toggle('dark-mode');
-      const isDark = document.body.classList.contains('dark-mode');
-      
-      // Save preference to localStorage so it persists across page visits
-      localStorage.setItem('dark-mode', isDark);
-      
-      // Animate the icon with a rotation effect
-      icon.style.transform = 'rotate(360deg)';
-      setTimeout(() => icon.style.transform = 'rotate(0deg)', 500);
-      
-      // Update icon and label based on current theme
-      icon.textContent = isDark ? '🌙' : '🌞';
-      label.textContent = isDark ? 'Dark Mode' : 'Light Mode';
-    });
+const moonIcon = '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>';
 
-    // Add smooth transition for icon rotation
-    icon.style.transition = 'transform 0.5s ease';
+// Check for saved theme preference
+const prefersDark = localStorage.getItem('dark-mode') === 'true';
+if (prefersDark) {
+  document.body.classList.add('dark-mode');
+  icon.innerHTML = moonIcon;
+  label.textContent = 'Dark Mode';
+}
+
+// Toggle theme
+toggleBtn.addEventListener('click', () => {
+  document.body.classList.toggle('dark-mode');
+  const isDark = document.body.classList.contains('dark-mode');
+  localStorage.setItem('dark-mode', isDark);
+  
+  // Animate icon
+  icon.style.transform = 'rotate(360deg)';
+  setTimeout(() => icon.style.transform = 'rotate(0deg)', 500);
+  
+  // Update icon and label
+  icon.innerHTML = isDark ? moonIcon : sunIcon;
+  label.textContent = isDark ? 'Dark Mode' : 'Light Mode';
+});
+
+// Smooth transition for icon
+icon.style.transition = 'transform 0.5s ease';
   </script>
 </body>
 </html>
