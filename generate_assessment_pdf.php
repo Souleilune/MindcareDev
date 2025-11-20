@@ -245,7 +245,7 @@ $pdf->MultiCell(0, 4, 'This assessment is for informational purposes only and do
 $pdf->Ln(2);
 $pdf->SetFont('helvetica', '', 8);
 $pdf->Cell(0, 4, 'Generated on ' . date('F j, Y \a\t g:i A'), 0, 1, 'C');
-$pdf->Cell(0, 4, 'MindCare Platform - Your Mental Health Partner', 0, 1, 'C');
+$pdf->Cell(0, 4, 'MindCare - Your Mental Health Partner', 0, 1, 'C');
 
 $filename = 'Assessment_Report_' . date('Y-m-d') . '_' . $user['fullname'] . '.pdf';
 $pdf->Output($filename);

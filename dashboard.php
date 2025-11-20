@@ -9,6 +9,7 @@ include 'supabase.php';
 $user = $_SESSION['user'];
 $user_id = $user['id'];
 $user_name = $user['fullname'];
+$assessmentsRecord = supabaseSelect('assessments', ['user_id' => $user_id], '*', 'created_at.desc', null, true);
 
 // Get current date/time
 date_default_timezone_set('Asia/Manila');
@@ -440,6 +441,143 @@ $recommendations = [
       background-color: #f8d7da;
       color: #721c24;
     }
+    .assessment-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .assessment-table thead {
+      background-color: var(--bg-light);
+    }
+
+    .assessment-table th {
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      color: var(--text-dark);
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .assessment-table td {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      color: var(--text-dark);
+      font-size: 0.9rem;
+    }
+
+    .assessment-table tbody tr {
+      transition: background-color 0.2s ease;
+    }
+
+    .assessment-table tbody tr:hover {
+      background-color: rgba(90, 208, 190, 0.05);
+    }
+
+    /* Score Badge */
+    .score-badge {
+      display: inline-block;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+
+    .score-badge.mild {
+      background-color: #d4edda;
+      color: #155724;
+    }
+
+    .score-badge.moderate {
+      background-color: #fff3cd;
+      color: #856404;
+    }
+
+    .score-badge.severe {
+      background-color: #f8d7da;
+      color: #721c24;
+    }
+
+    body.dark-mode .score-badge.mild {
+      background-color: #1e4620;
+      color: #a8e6a1;
+    }
+
+    body.dark-mode .score-badge.moderate {
+      background-color: #4a3c0f;
+      color: #ffe69c;
+    }
+
+    body.dark-mode .score-badge.severe {
+      background-color: #4a1719;
+      color: #f5c2c7;
+    }
+
+    /* Action Buttons */
+    .btn-print {
+      padding: 0.5rem 1rem;
+      background-color: var(--primary-teal);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-decoration: none;
+    }
+
+    .btn-print:hover {
+      background-color: var(--primary-teal-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(90, 208, 190, 0.3);
+      color: white;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1.5rem;
+      color: var(--text-muted);
+    }
+
+    .empty-state svg {
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state h6 {
+      color: var(--text-dark);
+      font-size: 1.1rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .empty-state p {
+      margin-bottom: 1.5rem;
+    }
+
+    .empty-state .btn {
+      background-color: var(--primary-teal);
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      text-decoration: none;
+      display: inline-block;
+      transition: all 0.3s ease;
+    }
+
+    .empty-state .btn:hover {
+      background-color: var(--primary-teal-dark);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(90, 208, 190, 0.3);
+    }
+   .table-responsive {
+      overflow-x: auto;
+    }
 
     /* Dark mode status badges */
     body.dark-mode .status-confirmed {
@@ -623,6 +761,7 @@ $recommendations = [
           </a>
         </div>
       </div>
+      
 
       <!-- Quick Assessment Card -->
       <div class="col-md-6">
@@ -647,15 +786,79 @@ $recommendations = [
       <div class="tab-navigation">
         <button class="tab-btn" id="recommendationsTab">Recommendations</button>
         <button class="tab-btn active" id="appointmentsTab">Appointments</button>
+        <button class="tab-btn" id="assessmentTab">Assessment History</button>
       </div>
 
-      <button class="filter-btn">
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
-        Advanced Filters
-      </button>
     </div>
 
     <!-- Content Sections -->
+     <div id="assessmentContent" style="display: none;">
+      <div class="card">
+        <h5 class="mb-3" style="color: var(--text-dark); transition: color 0.3s ease;">Your Assessment Records </h5>
+         <?php if (empty($assessmentsRecord)): ?>
+        <div class="empty-state">
+          <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          <h6>No Assessments Yet</h6>
+          <p>You haven't taken any mental health assessments. Start by taking your first assessment to track your mental wellness.</p>
+          <a href="pre_assessment.php" class="btn">Take Assessment</a>
+        </div>
+      <?php else: ?>
+        <div class="table-responsive">
+          <table class="assessment-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>Summary</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($assessmentsRecord as $assessmentsRecord): ?>
+                <?php
+                  $score = $assessmentsRecord['score'];
+                  if ($score <= 2) {
+                    $badgeClass = 'mild';
+                    $statusText = 'Mild';
+                  } elseif ($score <= 4) {
+                    $badgeClass = 'moderate';
+                    $statusText = 'Moderate';
+                  } else {
+                    $badgeClass = 'severe';
+                    $statusText = 'Severe';
+                  }
+                  $date = date('M j, Y', strtotime($assessmentsRecord['created_at']));
+                  $time = date('g:i A', strtotime($assessmentsRecord['created_at']));
+                ?>
+                <tr>
+                  <td>
+                    <div style="font-weight: 600;"><?= $date ?></div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);"><?= $time ?></div>
+                  </td>
+                  <td>
+                    <span style="font-weight: 600; font-size: 1rem;"><?= $score ?>/6</span>
+                  </td>
+                  <td>
+                    <span class="score-badge <?= $badgeClass ?>"><?= $statusText ?></span>
+                  </td>
+                  <td><?= htmlspecialchars($assessmentsRecord['summary'] ?? 'No summary') ?></td>
+                  <td>
+                    <a href="generate_assessment_pdf.php?id=<?= $assessmentsRecord['id'] ?>" class="btn-print" target="_blank">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                      Print PDF
+                    </a>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php endif; ?>
+        
+        
+      </div>
+    </div>
     <div id="recommendationsContent" style="display: none;">
       <div class="card">
         <h5 class="mb-3" style="color: var(--text-dark); transition: color 0.3s ease;">Based on your Assessment, you can do the following:</h5>
@@ -701,7 +904,7 @@ $recommendations = [
         <?php endif; ?>
       </div>
     </div>
-  </div>
+    
 
   <!-- Scripts -->
   <script src="mobile.js"></script>
@@ -710,22 +913,37 @@ $recommendations = [
     // Tab switching
     const recommendationsTab = document.getElementById('recommendationsTab');
     const appointmentsTab = document.getElementById('appointmentsTab');
+    const assessmentTab = document.getElementById('assessmentTab');
     const recommendationsContent = document.getElementById('recommendationsContent');
     const appointmentsContent = document.getElementById('appointmentsContent');
+    const assessmentContent = document.getElementById('assessmentContent');
 
     recommendationsTab.addEventListener('click', () => {
       recommendationsTab.classList.add('active');
       appointmentsTab.classList.remove('active');
+      assessmentTab.classList.remove('active');
       recommendationsContent.style.display = 'block';
       appointmentsContent.style.display = 'none';
+      assessmentContent.style.display = 'none';
     });
 
     appointmentsTab.addEventListener('click', () => {
       appointmentsTab.classList.add('active');
       recommendationsTab.classList.remove('active');
+      assessmentTab.classList.remove('active');
       appointmentsContent.style.display = 'block';
       recommendationsContent.style.display = 'none';
+      assessmentContent.style.display = 'none';
     });
+
+    assessmentTab.addEventListener('click', () => {
+      assessmentTab.classList.add('active');
+      appointmentsTab.classList.remove('active');
+      recommendationsTab.classList.remove('active');
+      appointmentsContent.style.display = 'none';
+      recommendationsContent.style.display = 'none';
+      assessmentContent.style.display = 'block';
+    })
 
     // Dark mode toggle
     const toggleBtn = document.getElementById('themeToggle');
