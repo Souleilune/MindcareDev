@@ -7,6 +7,7 @@ if (!isset($_SESSION['user']) || $_SESSION['user']['role'] !== 'Patient') {
 
 require_once('vendor/autoload.php');
 include 'supabase.php';
+date_default_timezone_set('Asia/Manila');
 
 $user_id = $_SESSION['user']['id'];
 $assessment_id = isset($_GET['id']) ? intval($_GET['id']) : null;
@@ -16,7 +17,6 @@ if (!$assessment_id) {
   exit;
 }
 
-// Fetch assessment data (with RLS bypass)
 $assessments = supabaseSelect('assessments', ['id' => $assessment_id, 'user_id' => $user_id], '*', null, null, true);
 
 if (empty($assessments)) {
@@ -26,54 +26,50 @@ if (empty($assessments)) {
 
 $assessment = $assessments[0];
 
-// Fetch user data (with RLS bypass)
 $users = supabaseSelect('users', ['id' => $user_id], '*', null, null, true);
 $user = !empty($users) ? $users[0] : [];
 
-// Create new PDF document
 $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
 
-// Set document information
 $pdf->SetCreator('MindCare Platform');
 $pdf->SetAuthor('MindCare');
 $pdf->SetTitle('Mental Health Assessment Report');
 $pdf->SetSubject('Assessment Results');
 
-// Remove default header/footer
 $pdf->setPrintHeader(false);
 $pdf->setPrintFooter(false);
 
-// Set margins
 $pdf->SetMargins(15, 15, 15);
 $pdf->SetAutoPageBreak(TRUE, 15);
 
-// Add a page
 $pdf->AddPage();
 
-
-// Set font
 $pdf->SetFont('helvetica', '', 10);
 
-// Define colors
-$primaryColor = array(90, 208, 190); // #5ad0be
-$darkColor = array(26, 165, 146);    // #1aa592
-$textColor = array(51, 51, 51);      // #333333
-$lightGray = array(248, 249, 250);   // #f8f9fa
+$primaryColor = array(90, 208, 190); 
+$darkColor = array(26, 165, 146);    
+$textColor = array(51, 51, 51);     
+$lightGray = array(248, 249, 250); 
 
-// === HEADER SECTION ===
-$pdf->SetFillColor($primaryColor[0], $primaryColor[1], $primaryColor[2]);
-$pdf->Rect(0, 0, 210, 40, 'F');
+$pdf->SetFillColor(255, 255, 255);
+$pdf->Rect(0, 0, 210, 45, 'F');
 
-$pdf->SetTextColor(255, 255, 255);
-$pdf->SetFont('helvetica', 'B', 24);
-$pdf->SetXY(15, 12);
-$pdf->Cell(0, 10, 'MindCare', 0, 1, 'L');
+$logoPath = 'images/Mindcare.jpg';
+if (file_exists($logoPath)) {
+  $pdf->Image($logoPath, 9, 8, 35, 0, '', '', '', false, 300, '', false, false, 0);
+}
 
-$pdf->SetFont('helvetica', '', 11);
-$pdf->SetXY(15, 24);
-$pdf->Cell(0, 6, 'Mental Health Assessment Report', 0, 1, 'L');
+$pdf->SetTextColor($primaryColor[0], $primaryColor[1], $primaryColor[2]);
+$pdf->SetFont('helvetica', 'B', 18);
+$pdf->SetXY(45, 20);
+$pdf->Cell(0, 8, 'MindCare', 0, 1, 'L');
 
-// === PATIENT INFORMATION SECTION ===
+$pdf->SetFont('helvetica', '', 10);
+$pdf->SetXY(45, 22);
+$pdf->Cell(0, 14, 'Mental Health Assessment Report', 0, 1, 'L');
+
+$pdf->SetLineWidth(0.2);
+
 $pdf->SetY(50);
 $pdf->SetTextColor($textColor[0], $textColor[1], $textColor[2]);
 $pdf->SetFont('helvetica', 'B', 14);
@@ -82,7 +78,6 @@ $pdf->Cell(0, 8, 'Patient Information', 0, 1, 'L');
 $pdf->SetFont('helvetica', '', 10);
 $pdf->Ln(2);
 
-// Patient details in a table-like format
 $infoData = [
   ['Name:', $user['fullname'] ?? 'N/A'],
   ['Age:', ($user['age'] ?? 'N/A') . ' years old'],
@@ -98,28 +93,25 @@ foreach ($infoData as $row) {
   $pdf->Cell(0, 6, $row[1], 0, 1, 'L');
 }
 
-// === ASSESSMENT RESULTS SECTION ===
 $pdf->Ln(8);
 $pdf->SetFont('helvetica', 'B', 14);
 $pdf->Cell(0, 8, 'Assessment Results', 0, 1, 'L');
 $pdf->Ln(2);
 
-// Score box with background
 $pdf->SetFillColor($lightGray[0], $lightGray[1], $lightGray[2]);
 $pdf->SetFont('helvetica', 'B', 10);
 $pdf->Cell(40, 8, 'Assessment Score:', 1, 0, 'L', true);
 $pdf->SetFont('helvetica', '', 10);
 
-// Determine score severity and color
 $score = $assessment['score'];
 if ($score <= 2) {
-  $scoreColor = array(40, 167, 69); // Green
+  $scoreColor = array(40, 167, 69);
   $severityText = 'Mild';
 } elseif ($score <= 4) {
-  $scoreColor = array(255, 193, 7); // Yellow
+  $scoreColor = array(255, 193, 7);
   $severityText = 'Moderate';
 } else {
-  $scoreColor = array(220, 53, 69); // Red
+  $scoreColor = array(220, 53, 69);
   $severityText = 'Severe';
 }
 
@@ -130,22 +122,21 @@ $pdf->Cell(0, 8, $score . '/6 (' . $severityText . ')', 1, 1, 'L', true);
 $pdf->SetTextColor($textColor[0], $textColor[1], $textColor[2]);
 $pdf->SetFont('helvetica', '', 10);
 
-// Summary
 $pdf->Ln(4);
 $pdf->SetFont('helvetica', 'B', 10);
 $pdf->Cell(0, 6, 'Summary:', 0, 1, 'L');
 $pdf->SetFont('helvetica', '', 10);
 $pdf->MultiCell(0, 6, $assessment['summary'] ?? 'No summary available', 0, 'L');
 
-// Assessment Date
 $pdf->Ln(4);
 $pdf->SetFont('helvetica', 'B', 10);
 $pdf->Cell(40, 6, 'Assessment Date:', 0, 0, 'L');
 $pdf->SetFont('helvetica', '', 10);
-$assessmentDate = date('F j, Y \a\t g:i A', strtotime($assessment['created_at']));
+$createdAtUTC = new DateTime($assessment['created_at'], new DateTimeZone('UTC'));
+$createdAtPHT = $createdAtUTC->setTimezone(new DateTimeZone('Asia/Manila'));
+$assessmentDate = $createdAtPHT->format('F j, Y \a\t g:i A');
 $pdf->Cell(0, 6, $assessmentDate, 0, 1, 'L');
 
-// === DETAILED RESPONSES SECTION (if available) ===
 $hasDetailedResponses = false;
 $detailedFields = [
   'Orientation Responses' => ['orientation_0', 'orientation_1', 'orientation_2', 'orientation_3', 'orientation_4'],
@@ -198,13 +189,11 @@ if ($hasDetailedResponses) {
   }
 }
 
-// === RECOMMENDATIONS SECTION ===
 $pdf->Ln(4);
 $pdf->SetFont('helvetica', 'B', 14);
 $pdf->Cell(0, 8, 'Recommendations', 0, 1, 'L');
 $pdf->Ln(2);
 
-// Generate recommendations based on score
 $recommendations = [];
 if ($score <= 2) {
   $recommendations = [
@@ -245,7 +234,6 @@ foreach ($recommendations as $index => $rec) {
   $pdf->Ln(2);
 }
 
-// === FOOTER SECTION ===
 $pdf->Ln(10);
 $pdf->SetDrawColor(200, 200, 200);
 $pdf->Line(15, $pdf->GetY(), 195, $pdf->GetY());
@@ -259,7 +247,6 @@ $pdf->SetFont('helvetica', '', 8);
 $pdf->Cell(0, 4, 'Generated on ' . date('F j, Y \a\t g:i A'), 0, 1, 'C');
 $pdf->Cell(0, 4, 'MindCare Platform - Your Mental Health Partner', 0, 1, 'C');
 
-// Output PDF
 $filename = 'Assessment_Report_' . date('Y-m-d') . '_' . $user['fullname'] . '.pdf';
-$pdf->Output($filename); // 'D' forces download
+$pdf->Output($filename);
 exit;

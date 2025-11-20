@@ -1,6 +1,8 @@
 <?php
 session_start();
 include 'supabase.php';
+date_default_timezone_set('Asia/Manila');
+
 
 // Check if user is logged in
 if (!isset($_SESSION['user'])) {
@@ -505,13 +507,20 @@ $recommendationData = getRecommendations($assessment);
           <span class="severity-badge severity-<?= $recommendationData['severity'] ?>">
             <?= ucfirst($recommendationData['severity']) ?> Level
           </span>
-          <p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.9;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem; vertical-align: middle;">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="12 6 12 12 16 14"></polyline>
-            </svg>
-            Assessed on <?= date('F j, Y', strtotime($assessment['created_at'])) ?>
-          </p>
+          <?php
+  // Convert assessment date to Philippine Time
+  $assessmentCreatedAtUTC = new DateTime($assessment['created_at'], new DateTimeZone('UTC'));
+  $assessmentCreatedAtPHT = $assessmentCreatedAtUTC->setTimezone(new DateTimeZone('Asia/Manila'));
+  $assessmentDateFormatted = $assessmentCreatedAtPHT->format('F j, Y');
+?>
+<p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.9;">
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.25rem; vertical-align: middle;">
+    <circle cx="12" cy="12" r="10"></circle>
+    <polyline points="12 6 12 12 16 14"></polyline>
+  </svg>
+  Assessed on <?= $assessmentDateFormatted ?>
+</p>
+
         </div>
       </div>
 
@@ -549,31 +558,32 @@ $recommendationData = getRecommendations($assessment);
       </div>
 
       <!-- Action Buttons -->
+     <!-- Action Buttons -->
       <?php if ($recommendationData['severity'] !== 'minimal'): ?>
-        <div class="card" style="margin-top: 1.5rem;">
+        <div class="card" style="margin-top: 1.5rem; padding: 1.5rem;">
           <div class="card-body text-center">
-            <h6 style="margin-bottom: 1rem;">Need Professional Support?</h6>
-            <a href="book_appointment.php" class="btn btn-primary">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem; vertical-align: middle;">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                <line x1="16" y1="2" x2="16" y2="6"></line>
-                <line x1="8" y1="2" x2="8" y2="6"></line>
-                <line x1="3" y1="10" x2="21" y2="10"></line>
-              </svg>
-              Book an Appointment
-            </a>
-            <?php if ($assessment): ?>
-  <div class="mt-3">
-    <a href="generate_assessment_pdf.php?id=<?= $assessment['id'] ?>" class="btn btn-primary" target="_blank">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="6 9 6 2 18 2 18 9"></polyline>
-        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-        <rect x="6" y="14" width="12" height="8"></rect>
-      </svg>
-      Print Assessment PDF
-    </a>
-  </div>
-<?php endif; ?>
+            <h6 style="margin-bottom: 1.5rem;">Need Professional Support?</h6>
+            <div class="d-flex justify-content-center align-items-center gap-3 flex-wrap">
+              <a href="book_appointment.php" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem; vertical-align: middle;">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Book an Appointment
+              </a>
+              <?php if ($assessment): ?>
+              <a href="generate_assessment_pdf.php?id=<?= $assessment['id'] ?>" class="btn btn-primary" target="_blank">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem; vertical-align: middle;">
+                  <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                  <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
+                Print Assessment PDF
+              </a>
+              <?php endif; ?>
+            </div>
           </div>
         </div>
       <?php endif; ?>
